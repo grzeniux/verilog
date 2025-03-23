@@ -1,0 +1,18 @@
+# Vivado generated folders
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.webtalk/
+.Xil/
+*.str
+
+# Vivado misc
+*.log
+*.jou
+*.tmp
+*.backup
+
+# Wygenerowany projekt
+cordic_sim/
