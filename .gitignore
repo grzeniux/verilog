@@ -15,6 +15,3 @@
 *.jou
 *.tmp
 *.backup
-
-# Wygenerowany projekty
-cordic_sim/
