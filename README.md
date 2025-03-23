@@ -28,6 +28,7 @@ Skrypt usunie wszystko zgodnie z listą w `_generated_files.txt`.
 - Projekt nie wymaga plików `.xdc` – wszystko działa w trybie symulacyjnym.
 - Obsługa top-modułu testbench odbywa się automatycznie (jeśli plik zawiera `_TB` w nazwie).
 - Skrypt jest kompatybilny z Vivado 2018.3+
+- Projekt rozwijany z użyciem **Visual Studio Code (VS Code)** z dodatkiem **Git Graph** – do wygodnego zarządzania repozytorium i wersjami.
 
 
 ## 📄 Opis plików pomocniczych
