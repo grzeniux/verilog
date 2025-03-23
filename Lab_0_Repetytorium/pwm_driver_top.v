@@ -22,7 +22,7 @@ module pwm_driver_top
     
     
     
-    // Instancja modułu licznika
+    // Instancja modu�u licznika
     pwm_counter uut_counter (
         .clk(CLK),
         .rst(rst),
@@ -98,8 +98,8 @@ module pwm_driver_top
     channel_selector chan_sel(
         .clk(CLK),
         .rst(rst),
-        .button_stable(button_debounced), // Bistabilne sygnały wejściowe
-        .active_channel(active_channel) // Wyjście z jednym aktywnym kanałem
+        .button_stable(button_debounced), // Bistabilne sygna�y wej�ciowe
+        .active_channel(active_channel) // Wyj�cie z jednym aktywnym kana�em
     );
 
 endmodule
