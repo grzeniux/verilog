@@ -8,12 +8,10 @@
 .Xil/
 *.str
 *.xpr
+*.txt
 
 # Vivado misc
 *.log
 *.jou
 *.tmp
 *.backup
-
-# Wygenerowany projekty
-cordic_sim/

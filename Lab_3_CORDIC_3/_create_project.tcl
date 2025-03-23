@@ -1,8 +1,8 @@
 # create_project.tcl
 # Vivado script – automatyczne tworzenie projektu z plikow w ./_src
 
-set proj_name "cordic"
-set proj_dir "./cordic"
+set proj_name "cordic_3"
+set proj_dir "./cordic_3"
 set part "xc7z020clg484-1"
 set src_dir "./_src"
 
