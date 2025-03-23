@@ -1,4 +1,4 @@
 .Xil
-./cordic
+./cordic_1
 vivado.jou
 vivado.log

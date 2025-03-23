@@ -8,6 +8,7 @@
 .Xil/
 *.str
 *.xpr
+*.txt
 
 # Vivado misc
 *.log
