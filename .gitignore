@@ -15,4 +15,4 @@
 *.backup
 
 # Wygenerowany projekt
-cordic_sim/
+cordic/
