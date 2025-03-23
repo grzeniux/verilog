@@ -1,168 +1,94 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 16.03.2025 23:13:57
-// Design Name: 
-// Module Name: pwm_full
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
-module pwm_full(
-input wire CLK,
-  input wire[3:0] BTN,
-  input wire [5:0] SW,
-  output wire [3:0] PWM_OUT,
-  output wire count,
-  output wire ud_count
-    );
-    
-     reg [7:0] counter = 0;
-     reg [7:0] duty_cycle_1=0;
-     reg [7:0] duty_cycle_2=0;
-     reg [7:0] duty_cycle_3=0;
-     reg [7:0] duty_cycle_4=0;
-     reg mode_1 =1;
-     reg mode_2=0;
-     reg direction = 1;
-     reg [7:0] up_down_counter =0;
-     reg edge_center_mode =0;
-     reg pwm_1=0;
-     reg pwm_2=0;
-     reg pwm_3=0;
-     reg pwm_4=0;
-     integer i=0; 
-
-    reg [15:0] btn_counter [3:0];  // Licznik dla ka dego przycisku
-    reg [3:0] btn_stable = 4'b0000;  // Stabilny stan przycisk w
-    parameter DEBOUNCE_DELAY = 10; 
-    always @(posedge CLK) begin
-    for (i = 0; i < 4; i = i + 1) begin
-        if (BTN[i] == 1) begin
-            if (btn_counter[i] < DEBOUNCE_DELAY)
-               btn_counter[i] <= btn_counter[i] + 1;
-             else
-                btn_stable[i] <= 1; // Przytrzymany wystarczaj co d ugo -> stabilny
+`timescale 1us / 1ps
+// Jednokana�owy generator PWM
+module pwm_channel (
+    input clk,
+    input rst,
+    input [3:0] duty_cycle, // Zakres 0-9 odpowiada 0-90%
+    input edge_aligned,
+    input high_true,
+    input [7:0] counter,
+    input en,
+    output reg pwm_out
+);
+    always @(posedge clk or posedge rst) begin
+        if (rst) 
+            pwm_out <= 0;
+        else begin
+            if (en) begin
+                if (edge_aligned) begin
+                    pwm_out <= (counter < (duty_cycle * 10)) ? high_true : ~high_true;
+                end else begin // Center-aligned
+                    pwm_out <= (counter < (duty_cycle * 10)/2 || counter > (100 - (duty_cycle * 10)/2)) ? high_true : ~high_true;
+                end
             end else begin
-                btn_counter[i] <= 0;
-                btn_stable[i] <= 0; // Przywr cenie stanu niskiego
+                pwm_out <= ~high_true;
             end
-           end
-     end
+        end
+    end
+endmodule
 
-
-    always @(posedge CLK) begin
-    if (!edge_center_mode) begin
-
-      if (counter < 100)
-        counter <= counter + 1;
-      else
-        counter <= 0;
-    end else begin
-
-      if (direction)begin
-        if(up_down_counter<50)
-            up_down_counter <= up_down_counter + 1;
+// Modu� licznika
+module pwm_counter (
+    input clk,
+    input rst,
+    output reg [7:0] counter
+);
+    always @(posedge clk or posedge rst) begin
+        if (rst) 
+            counter <= 0;
+        else if (counter >= 99) 
+            counter <= 0;
         else 
-            direction<=0;
-      end else begin
-        if(up_down_counter>0)
-            up_down_counter <= up_down_counter - 1;
-        else
-            direction<=1;
-      end
-  end
-end
-
-always @(posedge SW[0]) begin
-    if(btn_stable[0]&&duty_cycle_1<90) duty_cycle_1<= duty_cycle_1+10;
-    if(btn_stable[1]&&duty_cycle_2<90) duty_cycle_2<= duty_cycle_2+10;
-    if(btn_stable[2]&&duty_cycle_3<90) duty_cycle_3<= duty_cycle_3+10;
-    if(btn_stable[3]&&duty_cycle_4<90) duty_cycle_4<= duty_cycle_4+10; 
-end
-
-always @(posedge SW[1]) begin
-    if(btn_stable[0]&&duty_cycle_1>0) duty_cycle_1<= duty_cycle_1-10;
-    if(btn_stable[1]&&duty_cycle_2>0) duty_cycle_2<= duty_cycle_2-10;
-    if(btn_stable[2]&&duty_cycle_3>0) duty_cycle_3<= duty_cycle_3-10;
-    if(btn_stable[3]&&duty_cycle_4>0) duty_cycle_4<= duty_cycle_4-10;
-end
-
-always @(posedge SW[2]) begin
-    mode_1 <= 1;
-    mode_2 <= 0;
-end
-
-always @(posedge SW[3]) begin
-    mode_1 <= 0;
-    mode_2 <= 1;
-end
-
- always @(posedge SW[4]) begin
-    edge_center_mode <= 0;
-    counter <= 0;
-  end
-
-
-  always @(posedge SW[5]) begin
-    edge_center_mode <= 1;
-    up_down_counter <= 0; 
-    direction <= 1;  
-  end
-  
-  always@(posedge CLK) begin
-    if(btn_stable[0])begin
-        case(edge_center_mode)
-            0: pwm_1 <= (counter<duty_cycle_1) ? mode_1:mode_2;
-            1: pwm_1 <=  (up_down_counter<duty_cycle_1/2)?mode_1:mode_2;
-        endcase
+            counter <= counter + 1;
     end
-  end
-  
-  always@(posedge CLK) begin
-    if(btn_stable[1])begin
-        case(edge_center_mode)
-            0: pwm_2 <= (counter<duty_cycle_2) ? mode_1:mode_2;
-            1: pwm_2 <=  (up_down_counter<duty_cycle_2/2)?mode_1:mode_2;
-        endcase
-    end
-  end
-  
-  always@(posedge CLK) begin
-    if(btn_stable[2])begin
-        case(edge_center_mode)
-            0: pwm_3 <= (counter<duty_cycle_3) ? mode_1:mode_2;
-            1: pwm_3 <=  (up_down_counter<duty_cycle_3/2)?mode_1:mode_2;
-        endcase
-    end
-  end
-  always@(posedge CLK) begin
-    if(btn_stable[3])begin
-        case(edge_center_mode)
-            0: pwm_4 <= (counter<duty_cycle_4) ? mode_1:mode_2;
-            1: pwm_4 <=  (up_down_counter<duty_cycle_4/2)?mode_1:mode_2;
-        endcase
-    end
-  end
-  
+endmodule
 
+module channel_selector(
+    input wire clk,
+    input wire rst,
+    input wire [3:0] button_stable, // Bistabilne sygna�y wej�ciowe
+    output reg [3:0] active_channel // Wyj�cie z jednym aktywnym kana�em
+);
 
-assign PWM_OUT[0] = pwm_1;
-assign PWM_OUT[1] = pwm_2;
-assign PWM_OUT[2] = pwm_3;
-assign PWM_OUT[3] = pwm_4;
-assign count = counter;
-assign ud_count = up_down_counter;
+    always @(posedge clk or posedge rst) begin
+        if (rst)
+            active_channel <= 4'b0001; // Domy�lnie pierwszy kana�
+        else begin
+            case (button_stable)
+                4'b0001: active_channel <= 4'b0001;
+                4'b0010: active_channel <= 4'b0010;
+                4'b0100: active_channel <= 4'b0100;
+                4'b1000: active_channel <= 4'b1000;
+                default: active_channel <= active_channel; // Zachowanie bie��cego stanu
+            endcase
+        end
+    end
+
+endmodule
+
+// Modu� obs�ugi przycisk�w z debouncerem
+module button_debouncer (
+    input clk,
+    input rst,
+    input button_in,
+    output reg button_out
+);
+    reg [15:0] debounce_cnt;
+    reg button_stable;
+    
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            debounce_cnt <= 0;
+            button_stable <= 0;
+            button_out <= 0;
+        end else begin
+            if (button_in == button_stable) 
+                debounce_cnt <= 0;
+            else if (debounce_cnt == 16'hFF) begin
+                button_stable <= button_in;
+                button_out <= button_in;
+            end else
+                debounce_cnt <= debounce_cnt + 1;
+        end
+    end
 endmodule
