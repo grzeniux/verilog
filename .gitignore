@@ -7,6 +7,7 @@
 *.webtalk/
 .Xil/
 *.str
+*.xpr
 
 # Vivado misc
 *.log
@@ -14,5 +15,5 @@
 *.tmp
 *.backup
 
-# Wygenerowany projekt
-cordic/
+# Wygenerowany projekty
+cordic_sim/

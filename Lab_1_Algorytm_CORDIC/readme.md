@@ -30,8 +30,6 @@ Skrypt usunie wszystko zgodnie z listą w `_generated_files.txt`.
 - Skrypt jest kompatybilny z Vivado 2018.3+
 
 
-
-
 ## 📄 Opis plików pomocniczych
 
 | Plik                     | Opis                                                                 |
