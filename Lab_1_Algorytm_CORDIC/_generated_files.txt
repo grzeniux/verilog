@@ -1,0 +1,4 @@
+.Xil
+./cordic
+vivado.jou
+vivado.log
