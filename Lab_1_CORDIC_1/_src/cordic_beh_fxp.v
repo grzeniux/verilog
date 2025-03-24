@@ -9,7 +9,6 @@ reg signed [11:0] sin = 0.0;
 reg signed [11:0] angle = 0.0; //Running angle
 
 reg signed [11:0] Kn = 0.607253 * FXP_SCALE;
-reg signed [11:0] arctan[0:13];
 reg signed [11:0] scaled_arctan[0:13];
 
 reg signed [23:0] result_cos = 0.0;
@@ -20,22 +19,9 @@ reg signed [11:0] tmp;
 
 
 initial //Execute only once
-begin
-  arctan[0] = 0.785398163;// * FXP_SCALE;
-  arctan[1] = 0.463647609;// * FXP_SCALE;
-  arctan[2] = 0.244978663;// * FXP_SCALE;
-  arctan[3] = 0.124354995;// * FXP_SCALE;
-  arctan[4] = 0.06241881;// * FXP_SCALE;
-  arctan[5] = 0.031239833;// * FXP_SCALE;
-  arctan[6] = 0.015623729;// * FXP_SCALE;
-  arctan[7] = 0.007812341;// * FXP_SCALE;
-  arctan[8] = 0.00390623;// * FXP_SCALE;
-  arctan[9] = 0.001953123;// * FXP_SCALE;
-  arctan[10] = 0.000976562;// * FXP_SCALE;
-  arctan[11] = 0.000488281211194898;// * FXP_SCALE;
-  arctan[12] = 0.000244140620149362;// * FXP_SCALE;
-  arctan[13] = 0.00012207031189367;// * FXP_SCALE;
+begin //Value of angle from 2.1 exercise
   
+  //fixed point scale
   scaled_arctan[0] = 0.785398163 * FXP_SCALE;
   scaled_arctan[1] = 0.463647609 * FXP_SCALE;
   scaled_arctan[2] = 0.244978663 * FXP_SCALE;
@@ -68,15 +54,17 @@ for ( i = 0; i < 11; i = i + 1) //Ten algorithm iterations
        sin = - ( cos >>> i) + sin;
        cos = tmp;
      end //if
-   end //for
+
     //Scale sin/cos values
  result_sin = (Kn * sin);
  result_sin = result_sin >>> 10;
  result_cos = (Kn * cos);
  result_cos = result_cos >>> 10;
     #10
-     $display("expected result: sin=%f, cos=%f", 0.717, 0.69);
+
  $display("sin=%f, cos=%f", $itor(result_sin)/$itor(FXP_SCALE), $itor(result_cos)/$itor(FXP_SCALE));
+    end //for
+  $display("expected result: sin=%f, cos=%f", 0.717, 0.69);
 end
 endmodule
 
