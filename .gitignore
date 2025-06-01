@@ -8,10 +8,12 @@
 .Xil/
 *.str
 *.xpr
-*.txt
 
 # Vivado misc
 *.log
 *.jou
 *.tmp
 *.backup
+
+*.txt
+!data.txt
