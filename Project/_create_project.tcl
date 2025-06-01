@@ -1,13 +1,16 @@
 # create_project.tcl
-# Vivado script – automatyczne tworzenie projektu z plikow w ./_src
+# Vivado script – tworzenie projektu z plikow w ./_src + dodanie XDC
 
-set proj_name "cordic_3"
-set proj_dir "./cordic_3"
+set proj_name "lvds"
+set proj_dir "./lvds"
 set part "xc7z020clg484-1"
 set src_dir "./_src"
 
+# Tworzenie projektu
 create_project $proj_name $proj_dir -part $part
+set_property top top [current_fileset]
 
+# Wyszukanie plików źródłowych
 set source_files [glob -nocomplain -directory $src_dir *.v *.sv]
 
 if {[llength $source_files] == 0} {
@@ -20,6 +23,7 @@ foreach file $source_files {
     puts " - $file"
     add_files $file
 
+    # Określ typ pliku (Verilog / SystemVerilog)
     if {[string match "*.sv" $file]} {
         set_property FILE_TYPE SystemVerilog [get_files $file]
     } else {
@@ -27,6 +31,16 @@ foreach file $source_files {
     }
 }
 
+# Dodanie pliku constraints (XDC)
+set xdc_file "$src_dir/zedboard.xdc"
+if {[file exists $xdc_file]} {
+    puts "Dodano constraints: $xdc_file"
+    add_files -fileset constrs_1 $xdc_file
+} else {
+    puts "Brak pliku constraints: $xdc_file"
+}
+
+# Wykrycie pliku testbench do symulacji (opcjonalnie)
 set sim_top ""
 foreach file $source_files {
     if {[string match "*_TB*" $file] || [string match "*tb*" $file]} {
@@ -43,16 +57,16 @@ if {$sim_top ne ""} {
     puts "Nie ustawiono top modulu do symulacji (brak *_TB* w nazwie)"
 }
 
+# Aktualizacja kolejnosci kompilacji
 update_compile_order -fileset sources_1
 
+# Potwierdzenie
 puts "Projekt Vivado '$proj_name' zostal poprawnie utworzony."
 
-
-# Zapisz listę wygenerowanych plików do cleanera
+# Zapis listy plików do czyszczenia
 set f [open "_generated_files.txt" "w"]
 puts $f ".Xil"
 puts $f "$proj_dir"
 puts $f "vivado.jou"
 puts $f "vivado.log"
 close $f
-
