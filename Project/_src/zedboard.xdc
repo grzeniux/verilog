@@ -54,6 +54,7 @@ set_property IOSTANDARD LVCMOS33 [get_ports uart_rx]
 ##########################
 
 
+
 # Przycisk BTND → trigger
 set_property PACKAGE_PIN R16 [get_ports btn_trigger]
 set_property IOSTANDARD LVCMOS18 [get_ports btn_trigger]

@@ -13,7 +13,7 @@ module carry_chain_sampler (
         for (i = 0; i < 8; i = i + 1) begin : gen_carry
             CARRY4 carry_inst (
                 .CO(carry_out[i*4 +: 4]),
-                .O(),
+                .O(),  // nieużywane
                 .CI((i == 0) ? carry_init : carry_out[(i-1)*4 + 3]),
                 .CYINIT(1'b0),
                 .DI(4'b0000),
@@ -22,6 +22,7 @@ module carry_chain_sampler (
         end
     endgenerate
 
+    // Licz bitów "1" w carry_out - tylko przy triggerze
     function [7:0] count_ones;
         input [31:0] vector;
         integer j;
