@@ -1,11 +1,13 @@
 module top (
-    input wire clk,             // 100 MHz clock
-    input wire lvds_in_p,       // JD2_P
-    input wire lvds_in_n,       // JD2_N
-    output wire uart_tx         // UART TX (JA1 ? FT232)
+    input wire clk,              // 100 MHz
+    input wire btn_trigger,      // BTND (R16)
+    input wire btn_test,         // BTNR (R18)
+    output reg led,              // LD3 (U21) - trigger indicator
+    output wire led_test,        // LD4 (V22) - test LED
+    output wire uart_tx          // UART TX
 );
 
-    // UART instancja
+    // UART
     reg [7:0] uart_data = 8'd0;
     reg uart_start = 0;
     wire uart_busy;
@@ -18,148 +20,88 @@ module top (
         .tx_busy(uart_busy)
     );
 
-    // Pseudo-LVDS zbocze narastające
-    wire lvds = lvds_in_p & ~lvds_in_n;
-    reg prev_lvds = 0;
-    wire rising_edge = (~prev_lvds) & lvds;
-
-    // Carry Chain - instancja i pomiar
-    wire [31:0] carry_sample;
-    carry_chain_sampler carry_inst (
-        .clk(clk),
-        .trigger(rising_edge),
-        .sampled_carry(carry_sample)
-    );
-
-    // Liczba ustawionych bitów (czas propagacji)
-    function [5:0] count_carry_bits;
-        input [31:0] sample;
-        integer i;
-        begin
-            count_carry_bits = 0;
-            for (i = 0; i < 32; i = i + 1) begin
-                if (sample[i])
-                    count_carry_bits = count_carry_bits + 1;
-            end
-        end
-    endfunction
-
-    // Pomiar
-    reg [31:0] delay = 0;
-    reg [31:0] temp = 0;
-    reg [3:0] hex_index = 0;
-    reg [3:0] sample_index = 0;
-    reg [4:0] state = 0;
-
-    reg [19:0] wait_cycles = 0;
-    reg uart_was_busy = 0;
+    // Rejestracja przycisku i wykrycie zbocza
+    reg btn_prev = 0;
+    reg trigger_reg = 0;
+    reg [23:0] led_counter = 0;
 
     always @(posedge clk) begin
-        prev_lvds <= lvds;
-        uart_start <= 0;
+        btn_prev <= btn_trigger;
 
-        // Zbocze LVDS ? rozpocznij pomiar
-        if (rising_edge && state == 0 && sample_index < 10) begin
-            delay <= count_carry_bits(carry_sample);  // tu użycie carry chain
-            state <= 1;
+        if (~btn_prev & btn_trigger) begin
+            trigger_reg <= 1;
+            led_counter <= 24'd50_000_000; // ~0.5 sekundy migania LED
+        end else begin
+            trigger_reg <= 0;
         end
 
-        case (state)
-
-            // 1: inicjalizacja transmisji HEX
-            1: if (!uart_busy) begin
-                temp <= delay;
-                hex_index <= 0;
-                state <= 2;
-            end
-
-            // 2: przygotowanie jednego znaku HEX i wyzwolenie UART
-            2: if (!uart_busy) begin
-                uart_data <= nibble_to_ascii(temp[31 - hex_index*4 -: 4]);
-                uart_start <= 1;
-                uart_was_busy <= 0;
-                state <= 3;
-            end
-
-            // 3: czekaj na zakończenie transmisji znaku
-            3: begin
-                if (uart_busy)
-                    uart_was_busy <= 1;
-                if (uart_was_busy && !uart_busy) begin
-                    if (hex_index == 7)
-                        state <= 4;
-                    else begin
-                        hex_index <= hex_index + 1;
-                        state <= 2;
-                    end
-                end
-            end
-
-            // \r
-            4: if (!uart_busy) begin
-                uart_data <= 8'd13;
-                uart_start <= 1;
-                uart_was_busy <= 0;
-                state <= 5;
-            end
-            5: begin
-                if (uart_busy)
-                    uart_was_busy <= 1;
-                if (uart_was_busy && !uart_busy)
-                    state <= 6;
-            end
-
-            // \n
-            6: if (!uart_busy) begin
-                uart_data <= 8'd10;
-                uart_start <= 1;
-                uart_was_busy <= 0;
-                state <= 7;
-            end
-            7: begin
-                if (uart_busy)
-                    uart_was_busy <= 1;
-                if (uart_was_busy && !uart_busy) begin
-                    wait_cycles <= 0;
-                    state <= 8;
-                end
-            end
-
-            // opóźnienie 5 ms
-            8: begin
-                wait_cycles <= wait_cycles + 1;
-                if (wait_cycles == 500_000) begin
-                    sample_index <= sample_index + 1;
-                    state <= (sample_index == 9) ? 10 : 0;
-                end
-            end
-
-            // DONE
-            10: if (!uart_busy) begin uart_data <= "D"; uart_start <= 1; uart_was_busy <= 0; state <= 11; end
-            11: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= "O"; uart_start <= 1; uart_was_busy <= 0; state <= 12; end
-            12: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= "N"; uart_start <= 1; uart_was_busy <= 0; state <= 13; end
-            13: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= "E"; uart_start <= 1; uart_was_busy <= 0; state <= 14; end
-            14: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= 8'd13; uart_start <= 1; uart_was_busy <= 0; state <= 15; end
-            15: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= 8'd10; uart_start <= 1; uart_was_busy <= 0; state <= 16; end
-            16: state <= 16;
-
-        endcase
+        if (led_counter > 0) begin
+            led_counter <= led_counter - 1;
+            led <= 1;
+        end else begin
+            led <= 0;
+        end
     end
 
-    // HEX konwersja 4-bit nibble -> ASCII
+    wire trigger = trigger_reg;
+
+    // Pomiar delay przez carry chain
+    wire [7:0] delay_cycles;
+    carry_chain_sampler carry_inst (
+        .clk(clk),
+        .trigger(trigger),
+        .delay_cycles(delay_cycles)
+    );
+
+    // HEX konwersja
     function [7:0] nibble_to_ascii;
         input [3:0] nibble;
         begin
             if (nibble < 10)
-                nibble_to_ascii = 8'd48 + nibble;
+                nibble_to_ascii = 8'd48 + nibble; // '0'..'9'
             else
-                nibble_to_ascii = 8'd65 + (nibble - 10);
+                nibble_to_ascii = 8'd65 + (nibble - 10); // 'A'..'F'
         end
     endfunction
+
+    // Transmisja UART
+    reg [3:0] state = 0;
+    reg [7:0] delay_buf = 0;
+
+    always @(posedge clk) begin
+        uart_start <= 0;
+
+        case (state)
+            0: if (trigger) begin
+                delay_buf <= delay_cycles;
+                state <= 1;
+            end
+            1: if (!uart_busy) begin
+                uart_data <= nibble_to_ascii(delay_buf[7:4]);
+                uart_start <= 1;
+                state <= 2;
+            end
+            2: if (!uart_busy) begin
+                uart_data <= nibble_to_ascii(delay_buf[3:0]);
+                uart_start <= 1;
+                state <= 3;
+            end
+            3: if (!uart_busy) begin
+                uart_data <= 8'd13; // \r
+                uart_start <= 1;
+                state <= 4;
+            end
+            4: if (!uart_busy) begin
+                uart_data <= 8'd10; // \n
+                uart_start <= 1;
+                state <= 5;
+            end
+            5: if (!uart_busy)
+                state <= 0;
+        endcase
+    end
+
+    // LED test (BTNR → LD4)
+    assign led_test = btn_test;
 
 endmodule
