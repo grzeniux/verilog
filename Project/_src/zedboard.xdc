@@ -38,7 +38,7 @@ create_clock -name clk -period 10.000 [get_ports clk]
 #set_property -dict { PACKAGE_PIN AA9   IOSTANDARD LVCMOS33 } [get_ports { PWM_OUT[3] }]; # Sch=JA4
 
 
-# JD2 - różnicowe wejście LVDS (Bank 13, VCCO = 3.3V)
+# JD2 - rĂłĹĽnicowe wejĹ›cie LVDS (Bank 13, VCCO = 3.3V)
 set_property PACKAGE_PIN V4 [get_ports lvds_in_n] ; # JD2_N
 set_property PACKAGE_PIN V5 [get_ports lvds_in_p] ; # JD2_P
 set_property IOSTANDARD LVCMOS33 [get_ports {lvds_in_p lvds_in_n}]
