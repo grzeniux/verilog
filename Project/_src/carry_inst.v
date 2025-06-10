@@ -4,13 +4,13 @@ module carry_chain_sampler (
     output reg [7:0] delay_cycles
 );
 
-    wire [31:0] carry_out;
+    wire [63:0] carry_out;
     wire carry_init = 1'b1;
 
-    // 32-bit carry chain: 8 x CARRY4
+    // 64-bit carry chain: 16 x CARRY4
     genvar i;
     generate
-        for (i = 0; i < 8; i = i + 1) begin : gen_carry
+        for (i = 0; i < 16; i = i + 1) begin : gen_carry
             CARRY4 carry_inst (
                 .CO(carry_out[i*4 +: 4]),
                 .O(),
@@ -22,12 +22,13 @@ module carry_chain_sampler (
         end
     endgenerate
 
+    // Liczenie '1' w wyniku
     function [7:0] count_ones;
-        input [31:0] vector;
+        input [63:0] vector;
         integer j;
         begin
             count_ones = 0;
-            for (j = 0; j < 32; j = j + 1)
+            for (j = 0; j < 64; j = j + 1)
                 if (vector[j]) count_ones = count_ones + 1;
         end
     endfunction
