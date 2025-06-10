@@ -2,7 +2,7 @@ module top (
     input wire clk,             // 100 MHz clock
     input wire lvds_in_p,       // JD2_P
     input wire lvds_in_n,       // JD2_N
-    output wire uart_tx         // UART TX (JA1 → FT232)
+    output wire uart_tx         // UART TX (JA1 ? FT232)
 );
 
     // UART instancja
@@ -23,8 +23,28 @@ module top (
     reg prev_lvds = 0;
     wire rising_edge = (~prev_lvds) & lvds;
 
+    // Carry Chain - instancja i pomiar
+    wire [31:0] carry_sample;
+    carry_chain_sampler carry_inst (
+        .clk(clk),
+        .trigger(rising_edge),
+        .sampled_carry(carry_sample)
+    );
+
+    // Liczba ustawionych bitów (czas propagacji)
+    function [5:0] count_carry_bits;
+        input [31:0] sample;
+        integer i;
+        begin
+            count_carry_bits = 0;
+            for (i = 0; i < 32; i = i + 1) begin
+                if (sample[i])
+                    count_carry_bits = count_carry_bits + 1;
+            end
+        end
+    endfunction
+
     // Pomiar
-    reg [31:0] counter = 0;
     reg [31:0] delay = 0;
     reg [31:0] temp = 0;
     reg [3:0] hex_index = 0;
@@ -32,20 +52,15 @@ module top (
     reg [4:0] state = 0;
 
     reg [19:0] wait_cycles = 0;
-    reg uart_was_busy = 0;  // nowy: pełne oczekiwanie na zakończenie bajtu
+    reg uart_was_busy = 0;
 
     always @(posedge clk) begin
         prev_lvds <= lvds;
         uart_start <= 0;
 
-        // Licznik do pomiaru czasu
-        if (counter < 32'hFFFFFFFF)
-            counter <= counter + 1;
-
-        // Zbocze LVDS → rozpocznij pomiar
+        // Zbocze LVDS ? rozpocznij pomiar
         if (rising_edge && state == 0 && sample_index < 10) begin
-            delay <= counter;
-            counter <= 0;
+            delay <= count_carry_bits(carry_sample);  // tu użycie carry chain
             state <= 1;
         end
 
@@ -72,7 +87,7 @@ module top (
                     uart_was_busy <= 1;
                 if (uart_was_busy && !uart_busy) begin
                     if (hex_index == 7)
-                        state <= 4;  // zakończ 8 znaków HEX
+                        state <= 4;
                     else begin
                         hex_index <= hex_index + 1;
                         state <= 2;
@@ -119,7 +134,7 @@ module top (
                 end
             end
 
-            // Wysyłanie DONE
+            // DONE
             10: if (!uart_busy) begin uart_data <= "D"; uart_start <= 1; uart_was_busy <= 0; state <= 11; end
             11: if (uart_busy) uart_was_busy <= 1;
                  else if (uart_was_busy) begin uart_data <= "O"; uart_start <= 1; uart_was_busy <= 0; state <= 12; end
