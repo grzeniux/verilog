@@ -1,14 +1,13 @@
 module top (
-    input wire clk,              // 100 MHz
-    input wire btn_trigger,      // BTND (R16)
-    input wire btn_test,         // BTNR (R18)
-    output reg led,              // LD3 (U21) - trigger indicator
-    output wire led_test,        // LD4 (V22) - test LED
-    output wire uart_tx          // UART TX
+    input wire clk,
+    input wire lvds_in_p,  // JD2_P → CH2
+    input wire lvds_in_n,  // JD2_N → CH1
+    output wire uart_tx,
+    output reg led         // LD3 sygnalizacja triggera
 );
 
-    // UART
-    reg [7:0] uart_data = 8'd0;
+    // UART TX
+    reg [7:0] uart_data = 0;
     reg uart_start = 0;
     wire uart_busy;
 
@@ -20,37 +19,33 @@ module top (
         .tx_busy(uart_busy)
     );
 
-    // Rejestracja przycisku i wykrycie zbocza
-    reg btn_prev = 0;
-    reg trigger_reg = 0;
-    reg [23:0] led_counter = 0;
+    // Trigger z pseudo-LVDS
+    wire lvds = lvds_in_p & ~lvds_in_n;
+    reg prev_lvds = 0;
+    wire trigger = (~prev_lvds & lvds);
 
     always @(posedge clk) begin
-        btn_prev <= btn_trigger;
+        prev_lvds <= lvds;
+    end
 
-        if (~btn_prev & btn_trigger) begin
-            trigger_reg <= 1;
-            led_counter <= 24'd50_000_000; // ~0.5 sekundy migania LED
-        end else begin
-            trigger_reg <= 0;
-        end
-
-        if (led_counter > 0) begin
-            led_counter <= led_counter - 1;
+    // LED jako wskaźnik triggera
+    reg [23:0] led_timer = 0;
+    always @(posedge clk) begin
+        if (trigger) begin
             led <= 1;
-        end else begin
-            led <= 0;
+            led_timer <= 24'd5_000_000; // ok. 50 ms
+        end else if (led_timer > 0) begin
+            led_timer <= led_timer - 1;
+            if (led_timer == 1) led <= 0;
         end
     end
 
-    wire trigger = trigger_reg;
-
-    // Pomiar delay przez carry chain
-    wire [7:0] delay_cycles;
+    // Carry chain pomiar
+    wire [7:0] delay;
     carry_chain_sampler carry_inst (
         .clk(clk),
         .trigger(trigger),
-        .delay_cycles(delay_cycles)
+        .delay_cycles(delay)
     );
 
     // HEX konwersja
@@ -58,50 +53,48 @@ module top (
         input [3:0] nibble;
         begin
             if (nibble < 10)
-                nibble_to_ascii = 8'd48 + nibble; // '0'..'9'
+                nibble_to_ascii = 8'd48 + nibble;
             else
-                nibble_to_ascii = 8'd65 + (nibble - 10); // 'A'..'F'
+                nibble_to_ascii = 8'd65 + (nibble - 10);
         end
     endfunction
 
-    // Transmisja UART
     reg [3:0] state = 0;
-    reg [7:0] delay_buf = 0;
+    reg [7:0] temp;
 
     always @(posedge clk) begin
         uart_start <= 0;
 
         case (state)
             0: if (trigger) begin
-                delay_buf <= delay_cycles;
+                temp <= delay;
                 state <= 1;
             end
+
             1: if (!uart_busy) begin
-                uart_data <= nibble_to_ascii(delay_buf[7:4]);
+                uart_data <= nibble_to_ascii(temp[7:4]);
                 uart_start <= 1;
                 state <= 2;
             end
+
             2: if (!uart_busy) begin
-                uart_data <= nibble_to_ascii(delay_buf[3:0]);
+                uart_data <= nibble_to_ascii(temp[3:0]);
                 uart_start <= 1;
                 state <= 3;
             end
+
             3: if (!uart_busy) begin
-                uart_data <= 8'd13; // \r
+                uart_data <= 8'd13; // CR
                 uart_start <= 1;
                 state <= 4;
             end
+
             4: if (!uart_busy) begin
-                uart_data <= 8'd10; // \n
+                uart_data <= 8'd10; // LF
                 uart_start <= 1;
-                state <= 5;
-            end
-            5: if (!uart_busy)
                 state <= 0;
+            end
         endcase
     end
-
-    // LED test (BTNR → LD4)
-    assign led_test = btn_test;
 
 endmodule
