@@ -1,165 +1,70 @@
-module top (
-    input wire clk,             // 100 MHz clock
-    input wire lvds_in_p,       // JD2_P
-    input wire lvds_in_n,       // JD2_N
-    output wire uart_tx         // UART TX (JA1 ? FT232)
+module lvds_tdc_auto10 (
+    input wire  sys_clk,     // 100 MHz
+    input wire  lvds_p,      // wejœcie sygna³u TTL 3.3V (np. z generatora)
+    output wire tx           // UART TX
 );
 
-    // UART instancja
-    reg [7:0] uart_data = 8'd0;
-    reg uart_start = 0;
-    wire uart_busy;
+    localparam TDC_WIDTH = 128;
+    localparam MAX_MEASUREMENTS = 10;
 
-    uart_tx_module #(.BAUD_DIV(868)) uart0 (
-        .clk(clk),
-        .tx_data(uart_data),
-        .tx_start(uart_start),
-        .tx(uart_tx),
-        .tx_busy(uart_busy)
-    );
+    reg [7:0] time_measurement;
+    reg [TDC_WIDTH-1:0] thermometer_code_reg;
+    reg [1:0] start_sync;
+    wire start_edge;
 
-    // Pseudo-LVDS zbocze narastajÄ…ce
-    wire lvds = lvds_in_p & ~lvds_in_n;
-    reg prev_lvds = 0;
-    wire rising_edge = (~prev_lvds) & lvds;
+    reg [3:0] measurement_count = 0;
+    reg uart_tx_start = 0;
+    wire uart_tx_busy;
+    reg [7:0] temp_measurement;
 
-    // Carry Chain - instancja i pomiar
-    wire [31:0] carry_sample;
-    carry_chain_sampler carry_inst (
-        .clk(clk),
-        .trigger(rising_edge),
-        .sampled_carry(carry_sample)
-    );
+    // 1. Detekcja zbocza na lvds_p
+    always @(posedge sys_clk) begin
+        start_sync <= {start_sync[0], lvds_p};
+    end
+    assign start_edge = start_sync[1] & ~start_sync[0];
 
-    // Liczba ustawionych bitÃ³w (czas propagacji)
-    function [5:0] count_carry_bits;
-        input [31:0] sample;
-        integer i;
-        begin
-            count_carry_bits = 0;
-            for (i = 0; i < 32; i = i + 1) begin
-                if (sample[i])
-                    count_carry_bits = count_carry_bits + 1;
-            end
+    // 2. £añcuch przeniesieñ (carry chain)
+    wire [TDC_WIDTH-1:0] carry_chain_taps;
+    genvar i;
+    generate
+        for (i = 0; i < TDC_WIDTH; i = i + 1) begin : chain
+            assign carry_chain_taps[i] = (i == 0) ? lvds_p : carry_chain_taps[i-1];
         end
-    endfunction
+    endgenerate
 
-    // Pomiar
-    reg [31:0] delay = 0;
-    reg [31:0] temp = 0;
-    reg [3:0] hex_index = 0;
-    reg [3:0] sample_index = 0;
-    reg [4:0] state = 0;
-
-    reg [19:0] wait_cycles = 0;
-    reg uart_was_busy = 0;
-
-    always @(posedge clk) begin
-        prev_lvds <= lvds;
-        uart_start <= 0;
-
-        // Zbocze LVDS ? rozpocznij pomiar
-        if (rising_edge && state == 0 && sample_index < 10) begin
-            delay <= count_carry_bits(carry_sample);  // tu uÅ¼ycie carry chain
-            state <= 1;
-        end
-
-        case (state)
-
-            // 1: inicjalizacja transmisji HEX
-            1: if (!uart_busy) begin
-                temp <= delay;
-                hex_index <= 0;
-                state <= 2;
-            end
-
-            // 2: przygotowanie jednego znaku HEX i wyzwolenie UART
-            2: if (!uart_busy) begin
-                uart_data <= nibble_to_ascii(temp[31 - hex_index*4 -: 4]);
-                uart_start <= 1;
-                uart_was_busy <= 0;
-                state <= 3;
-            end
-
-            // 3: czekaj na zakoÅ„czenie transmisji znaku
-            3: begin
-                if (uart_busy)
-                    uart_was_busy <= 1;
-                if (uart_was_busy && !uart_busy) begin
-                    if (hex_index == 7)
-                        state <= 4;
-                    else begin
-                        hex_index <= hex_index + 1;
-                        state <= 2;
-                    end
-                end
-            end
-
-            // \r
-            4: if (!uart_busy) begin
-                uart_data <= 8'd13;
-                uart_start <= 1;
-                uart_was_busy <= 0;
-                state <= 5;
-            end
-            5: begin
-                if (uart_busy)
-                    uart_was_busy <= 1;
-                if (uart_was_busy && !uart_busy)
-                    state <= 6;
-            end
-
-            // \n
-            6: if (!uart_busy) begin
-                uart_data <= 8'd10;
-                uart_start <= 1;
-                uart_was_busy <= 0;
-                state <= 7;
-            end
-            7: begin
-                if (uart_busy)
-                    uart_was_busy <= 1;
-                if (uart_was_busy && !uart_busy) begin
-                    wait_cycles <= 0;
-                    state <= 8;
-                end
-            end
-
-            // opÃ³Åºnienie 5 ms
-            8: begin
-                wait_cycles <= wait_cycles + 1;
-                if (wait_cycles == 500_000) begin
-                    sample_index <= sample_index + 1;
-                    state <= (sample_index == 9) ? 10 : 0;
-                end
-            end
-
-            // DONE
-            10: if (!uart_busy) begin uart_data <= "D"; uart_start <= 1; uart_was_busy <= 0; state <= 11; end
-            11: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= "O"; uart_start <= 1; uart_was_busy <= 0; state <= 12; end
-            12: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= "N"; uart_start <= 1; uart_was_busy <= 0; state <= 13; end
-            13: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= "E"; uart_start <= 1; uart_was_busy <= 0; state <= 14; end
-            14: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= 8'd13; uart_start <= 1; uart_was_busy <= 0; state <= 15; end
-            15: if (uart_busy) uart_was_busy <= 1;
-                 else if (uart_was_busy) begin uart_data <= 8'd10; uart_start <= 1; uart_was_busy <= 0; state <= 16; end
-            16: state <= 16;
-
-        endcase
+    // 3. Przechwycenie kodu termometrowego
+    always @(posedge sys_clk) begin
+        if (start_edge && measurement_count < MAX_MEASUREMENTS)
+            thermometer_code_reg <= carry_chain_taps;
     end
 
-    // HEX konwersja 4-bit nibble -> ASCII
-    function [7:0] nibble_to_ascii;
-        input [3:0] nibble;
-        begin
-            if (nibble < 10)
-                nibble_to_ascii = 8'd48 + nibble;
-            else
-                nibble_to_ascii = 8'd65 + (nibble - 10);
+    // 4. Przetwarzanie + UART
+    integer k;
+    always @(posedge sys_clk) begin
+        if (start_edge && !uart_tx_busy && (measurement_count < MAX_MEASUREMENTS)) begin
+            temp_measurement <= 8'd0;
+            for (k = 0; k < TDC_WIDTH; k = k + 1) begin
+                if (thermometer_code_reg[k] == 1'b1)
+                    temp_measurement <= (k < 255) ? (k + 1) : 8'd255;
+            end
+
+            time_measurement  <= temp_measurement;
+            uart_tx_start     <= 1'b1;
+            measurement_count <= measurement_count + 1;
+        end else begin
+            uart_tx_start <= 1'b0;
         end
-    endfunction
+    end
+
+    // 5. UART TX instancja
+    uart_tx_module #(
+        .BAUD_DIV(868)  // 115200 bps przy 100 MHz
+    ) uart_inst (
+        .clk      (sys_clk),
+        .tx_data  (time_measurement),
+        .tx_start (uart_tx_start),
+        .tx       (tx),
+        .tx_busy  (uart_tx_busy)
+    );
 
 endmodule
