@@ -47,9 +47,7 @@ set_property IOSTANDARD LVCMOS33 [get_ports {lvds_in_p lvds_in_n}]
 set_property PACKAGE_PIN Y11 [get_ports uart_tx];
 set_property IOSTANDARD LVCMOS33 [get_ports uart_tx]
 
-# UART RX 
-set_property PACKAGE_PIN AA11 [get_ports uart_rx];
-set_property IOSTANDARD LVCMOS33 [get_ports uart_rx]
-
-
+# LED (LD3 = U21)
+set_property PACKAGE_PIN U21 [get_ports led]
+set_property IOSTANDARD LVCMOS33 [get_ports led]
 
