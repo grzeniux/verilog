@@ -1,7 +1,7 @@
 module top (
     input wire clk,
-    input wire lvds_in_p,  // JD2_P → CH2
-    input wire lvds_in_n,  // JD2_N → CH1
+    input wire lvds_in_p,  // JD2_P ? CH2
+    input wire lvds_in_n,  // JD2_N ? CH1
     output wire uart_tx,
     output reg led         // LD3 sygnalizacja triggera
 );
@@ -28,7 +28,7 @@ module top (
         prev_lvds <= lvds;
     end
 
-    // LED jako wskaźnik triggera
+    // LED jako wska�nik triggera
     reg [23:0] led_timer = 0;
     always @(posedge clk) begin
         if (trigger) begin
