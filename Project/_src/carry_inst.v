@@ -1,21 +1,19 @@
-module carry_chain_sampler(
+module carry_chain_sampler (
     input wire clk,
     input wire trigger,
-    output reg [31:0] sampled_carry
+    output reg [7:0] delay_cycles
 );
 
     wire [31:0] carry_out;
-
-    // Początek carry chain
     wire carry_init = 1'b1;
 
-    // 8x CARRY4 = 32-bitowy łańcuch
+    // 32-bit carry chain: 8 x CARRY4
     genvar i;
     generate
         for (i = 0; i < 8; i = i + 1) begin : gen_carry
             CARRY4 carry_inst (
-                .CO(carry_out[i*4 +: 4]),                         // Wyjścia carry
-                .O(),                                      
+                .CO(carry_out[i*4 +: 4]),
+                .O(),
                 .CI((i == 0) ? carry_init : carry_out[(i-1)*4 + 3]),
                 .CYINIT(1'b0),
                 .DI(4'b0000),
@@ -24,10 +22,19 @@ module carry_chain_sampler(
         end
     endgenerate
 
-    // Próbkowanie carry chain przy zboczu triggera
+    function [7:0] count_ones;
+        input [31:0] vector;
+        integer j;
+        begin
+            count_ones = 0;
+            for (j = 0; j < 32; j = j + 1)
+                if (vector[j]) count_ones = count_ones + 1;
+        end
+    endfunction
+
     always @(posedge clk) begin
         if (trigger)
-            sampled_carry <= carry_out;
+            delay_cycles <= count_ones(carry_out);
     end
 
 endmodule
