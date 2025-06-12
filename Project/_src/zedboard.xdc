@@ -51,3 +51,5 @@ set_property IOSTANDARD LVCMOS33 [get_ports uart_tx]
 set_property PACKAGE_PIN U21 [get_ports led]
 set_property IOSTANDARD LVCMOS33 [get_ports led]
 
+set_property PACKAGE_PIN AA11 [get_ports test_out]
+set_property IOSTANDARD LVCMOS33 [get_ports test_out]

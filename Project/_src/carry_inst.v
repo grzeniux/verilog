@@ -1,12 +1,25 @@
 module carry_chain_sampler (
     input wire clk,
     input wire trigger,
-    output reg [7:0] delay_cycles,
-    output reg [7:0] sim_length,
-    output reg [31:0] fake_carry
+    output reg [7:0] delay_cycles
 );
 
-    integer length;
+    wire [31:0] carry_out;
+    wire carry_init = 1'b1;
+
+    genvar i;
+    generate
+        for (i = 0; i < 8; i = i + 1) begin : gen_carry
+            CARRY4 carry_inst (
+                .CO(carry_out[i*4 +: 4]),
+                .O(), // nieu¿ywane
+                .CI((i == 0) ? carry_init : carry_out[(i-1)*4 + 3]),
+                .CYINIT(1'b0),
+                .DI(4'b0000),
+                .S(4'b1111)
+            );
+        end
+    endgenerate
 
     function [7:0] count_ones;
         input [31:0] vector;
@@ -21,12 +34,8 @@ module carry_chain_sampler (
     endfunction
 
     always @(posedge clk) begin
-        if (trigger) begin
-            length = $urandom_range(3, 24);               // losowa d³ugoœæ propagacji
-            fake_carry = (1 << length) - 1;               // ustaw 1-bity
-            delay_cycles <= count_ones(fake_carry);       // zlicz
-            sim_length <= length;                         // zapisz d³ugoœæ do debugowania
-        end
+        if (trigger)
+            delay_cycles <= count_ones(carry_out);
     end
 
 endmodule
