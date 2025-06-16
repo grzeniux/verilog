@@ -7,7 +7,7 @@ module carry_chain_sampler (
     wire [31:0] carry_out;
     wire carry_init = 1'b1;
 
-    // 32-bit carry chain: 8 x CARRY4
+  
     genvar i;
     generate
         for (i = 0; i < 8; i = i + 1) begin : gen_carry

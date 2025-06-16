@@ -1,12 +1,31 @@
 module top (
     input wire clk,
-    input wire lvds_in_p,  // JD2_P → CH2
-    input wire lvds_in_n,  // JD2_N → CH1
+    input wire lvds_in_p,
+    input wire lvds_in_n,
     output wire uart_tx,
-    output reg led         // LD3 sygnalizacja triggera
+    output reg led,
+    output wire clk_test  // wyj�cie 1 MHz
 );
 
-    // UART TX
+
+reg [22:0] clk_div = 0;  // 23-bitowy licznik
+reg clk_10hz = 0;
+
+always @(posedge clk) begin
+    if (clk_div == 23'd4_999_999) begin
+        clk_div <= 0;
+        clk_10hz <= ~clk_10hz;
+    end else begin
+        clk_div <= clk_div + 1;
+    end
+end
+
+
+
+
+
+assign clk_test = clk_10hz;
+
     reg [7:0] uart_data = 0;
     reg uart_start = 0;
     wire uart_busy;
@@ -19,7 +38,7 @@ module top (
         .tx_busy(uart_busy)
     );
 
-    // Trigger z pseudo-LVDS
+  
     wire lvds = lvds_in_p & ~lvds_in_n;
     reg prev_lvds = 0;
     wire trigger = (~prev_lvds & lvds);
@@ -28,7 +47,7 @@ module top (
         prev_lvds <= lvds;
     end
 
-    // LED jako wskaźnik triggera
+  
     reg [23:0] led_timer = 0;
     always @(posedge clk) begin
         if (trigger) begin
@@ -40,7 +59,7 @@ module top (
         end
     end
 
-    // Carry chain pomiar
+  
     wire [7:0] delay;
     carry_chain_sampler carry_inst (
         .clk(clk),
