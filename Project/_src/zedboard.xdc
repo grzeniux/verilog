@@ -38,10 +38,17 @@ create_clock -name clk -period 10.000 [get_ports clk]
 #set_property -dict { PACKAGE_PIN AA9   IOSTANDARD LVCMOS33 } [get_ports { PWM_OUT[3] }]; # Sch=JA4
 
 
+
+# JD2 - rÄ‚Ĺ‚ÄąÄ˝nicowe wejÄąâ€şcie LVDS (Bank 13, VCCO = 3.3V)
+set_property PACKAGE_PIN V4 [get_ports lvds_in_n] ; # JD2_N
+set_property PACKAGE_PIN V5 [get_ports lvds_in_p] ; # JD2_P
+set_property IOSTANDARD LVCMOS33 [get_ports {lvds_in_p lvds_in_n}]
+
 # JD2 - rĂłĹĽnicowe wejĹ›cie LVDS (Bank 13, VCCO = 3.3V)
 #set_property PACKAGE_PIN V4 [get_ports lvds_in_n] ; # JD2_N
 #set_property PACKAGE_PIN V5 [get_ports lvds_in_p] ; # JD2_P
 #set_property IOSTANDARD LVCMOS33 [get_ports {lvds_in_p lvds_in_n}]
+
 
 # UART TX
 set_property PACKAGE_PIN Y11 [get_ports uart_tx];
@@ -52,6 +59,23 @@ set_property PACKAGE_PIN AA11 [get_ports uart_rx];
 set_property IOSTANDARD LVCMOS33 [get_ports uart_rx]
 
 ##########################
+<<<<<<< HEAD
+
+
+# Przycisk BTND → trigger
+set_property PACKAGE_PIN R16 [get_ports btn_trigger]
+set_property IOSTANDARD LVCMOS18 [get_ports btn_trigger]
+
+# Przycisk BTNR → test
+set_property PACKAGE_PIN R18 [get_ports btn_test]
+set_property IOSTANDARD LVCMOS18 [get_ports btn_test]
+
+# LD3 → trigger LED
+set_property PACKAGE_PIN U21 [get_ports led]
+set_property IOSTANDARD LVCMOS33 [get_ports led]
+
+# LD4 → test LED
+=======
 
 set_property PACKAGE_PIN V5 [get_ports lvds_trigger]         ;# JD2_P
 set_property IOSTANDARD LVCMOS33 [get_ports lvds_trigger]
@@ -70,5 +94,10 @@ set_property PACKAGE_PIN U21 [get_ports led]
 set_property IOSTANDARD LVCMOS33 [get_ports led]
 
 # LD4 ? test LED
+>>>>>>> 6614e438109a67fead3f23bbf1bcb60422f01906
 set_property PACKAGE_PIN V22 [get_ports led_test]
 set_property IOSTANDARD LVCMOS33 [get_ports led_test]
+
+# Wyj�cie 1 MHz na pin JA4 (Y11)
+set_property PACKAGE_PIN AA9 [get_ports clk_test]
+set_property IOSTANDARD LVCMOS33 [get_ports clk_test]

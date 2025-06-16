@@ -1,11 +1,31 @@
 module top (
-    input wire clk,                // 100 MHz clock
-    input wire lvds_trigger,       // Trigger z CH2 (np. JD2_P)
-    output wire uart_tx,           // UART TX (JA1)
-    output wire led                // LED œwieci jeœli delay_cycles > 3
+    input wire clk,
+    input wire lvds_in_p,
+    input wire lvds_in_n,
+    output wire uart_tx,
+    output reg led,
+    output wire clk_test  // wyjï¿½cie 1 MHz
 );
 
-    // UART
+
+reg [22:0] clk_div = 0;  // 23-bitowy licznik
+reg clk_10hz = 0;
+
+always @(posedge clk) begin
+    if (clk_div == 23'd4_999_999) begin
+        clk_div <= 0;
+        clk_10hz <= ~clk_10hz;
+    end else begin
+        clk_div <= clk_div + 1;
+    end
+end
+
+
+
+
+
+assign clk_test = clk_10hz;
+
     reg [7:0] uart_data = 0;
     reg uart_start = 0;
     wire uart_busy;
@@ -18,60 +38,36 @@ module top (
         .tx_busy(uart_busy)
     );
 
-    // Wykrywanie zbocza triggera
-    reg prev_trigger = 0;
-    wire rising_edge = (lvds_trigger == 1) && (prev_trigger == 0);
-
-    // Carry Chain
-    wire [7:0] delay_cycles;
-    carry_chain_sampler sampler_inst (
-        .clk(clk),
-        .trigger(rising_edge),
-        .delay_cycles(delay_cycles)
-    );
-
-    // LED œwieci, jeœli delay > 3
-    assign led = (delay_cycles > 3);
-
-    // Wysy³anie delay przez UART
-    reg [3:0] state = 0;
-    reg [7:0] delay_reg = 0;
+  
+    wire lvds = lvds_in_p & ~lvds_in_n;
+    reg prev_lvds = 0;
+    wire trigger = (~prev_lvds & lvds);
 
     always @(posedge clk) begin
-        prev_trigger <= lvds_trigger;
-        uart_start <= 0;
-
-        case (state)
-            0: if (rising_edge) begin
-                delay_reg <= delay_cycles;
-                state <= 1;
-            end
-
-            1: if (!uart_busy) begin
-                uart_data <= nibble_to_ascii(delay_reg[7:4]);
-                uart_start <= 1;
-                state <= 2;
-            end
-
-            2: if (!uart_busy) begin
-                uart_data <= nibble_to_ascii(delay_reg[3:0]);
-                uart_start <= 1;
-                state <= 3;
-            end
-
-            3: if (!uart_busy) begin
-                uart_data <= 8'd10;  // \n
-                uart_start <= 1;
-                state <= 4;
-            end
-
-            4: if (!uart_busy) begin
-                state <= 0;
-            end
-        endcase
+        prev_lvds <= lvds;
     end
 
-    // Nibble to ASCII
+  
+    reg [23:0] led_timer = 0;
+    always @(posedge clk) begin
+        if (trigger) begin
+            led <= 1;
+            led_timer <= 24'd5_000_000; // ok. 50 ms
+        end else if (led_timer > 0) begin
+            led_timer <= led_timer - 1;
+            if (led_timer == 1) led <= 0;
+        end
+    end
+
+  
+    wire [7:0] delay;
+    carry_chain_sampler carry_inst (
+        .clk(clk),
+        .trigger(trigger),
+        .delay_cycles(delay)
+    );
+
+    // HEX konwersja
     function [7:0] nibble_to_ascii;
         input [3:0] nibble;
         begin
@@ -81,5 +77,43 @@ module top (
                 nibble_to_ascii = 8'd65 + (nibble - 10);
         end
     endfunction
+
+    reg [3:0] state = 0;
+    reg [7:0] temp;
+
+    always @(posedge clk) begin
+        uart_start <= 0;
+
+        case (state)
+            0: if (trigger) begin
+                temp <= delay;
+                state <= 1;
+            end
+
+            1: if (!uart_busy) begin
+                uart_data <= nibble_to_ascii(temp[7:4]);
+                uart_start <= 1;
+                state <= 2;
+            end
+
+            2: if (!uart_busy) begin
+                uart_data <= nibble_to_ascii(temp[3:0]);
+                uart_start <= 1;
+                state <= 3;
+            end
+
+            3: if (!uart_busy) begin
+                uart_data <= 8'd13; // CR
+                uart_start <= 1;
+                state <= 4;
+            end
+
+            4: if (!uart_busy) begin
+                uart_data <= 8'd10; // LF
+                uart_start <= 1;
+                state <= 0;
+            end
+        endcase
+    end
 
 endmodule
