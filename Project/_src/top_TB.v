@@ -1,70 +1,45 @@
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
-module top_TB;
+module tb_lvds_manual_trigger();
 
     reg clk = 0;
-    wire uart_tx;
-    wire led;
-    wire test_pulse;
-    wire lvds_in_p;
-    wire lvds_in_n;
+    reg lvds_in_p = 1;
+    reg lvds_in_n = 1;
+
     wire [7:0] delay_cycles_out;
     wire [7:0] sim_length;
-    wire [31:0] fake_carry;
+    wire [31:0] fake_carry_internal;
 
     // 100 MHz clock
     always #5 clk = ~clk;
 
-    // LVDS wejście różnicowe: 1 & ~test_pulse
-    assign lvds_in_n = test_pulse;
-    assign lvds_in_p = 1'b1;
-
-    // DUT
     top uut (
         .clk(clk),
         .lvds_in_p(lvds_in_p),
         .lvds_in_n(lvds_in_n),
-        .uart_tx(uart_tx),
-        .led(led),
-        .test_pulse(test_pulse),
+        .led(),
         .delay_cycles_out(delay_cycles_out),
         .sim_length(sim_length),
-        .fake_carry(fake_carry)
+        .fake_carry(fake_carry_internal)
     );
 
-    integer i;
-
     initial begin
-        $display("=== START SYMULACJI ===");
-        $dumpfile("top_TB.vcd");
-        $dumpvars(0, top_TB);
+        $display("=== SYMULACJA LVDS: R�CZNY TRIGGER ===");
 
-        for (i = 0; i < 10; i = i + 1) begin
-            // Poczekaj między pomiarami
-            #1000;
+        #20;
+        $display("[INFO] lvds_in_p = %b, lvds_in_n = %b", lvds_in_p, lvds_in_n);
 
-            // Wymuś impuls testowy (trigger)
-            force uut.test_pulse = 1;
-            #20;
-            force uut.test_pulse = 0;
-            #10;
-            release uut.test_pulse;
+        // WYGENERUJ R�CZNE ZBOCZE ? trigger
+        #20 lvds_in_n = 0;  // zbocze ? trigger
+        $display("[TRIGGER] lvds_in_n = 0 ? r�nica!");
+        #20 lvds_in_n = 1;  // powr�t
 
-            // Poczekaj na propagację
-            #500;
+        #40;
+        $display("Pomiar zarejestrowany:");
+        $display("? delay_cycles = %0d", delay_cycles_out);
+        $display("? fake_carry   = %h", fake_carry_internal);
 
-            // Wyświetl wszystko co ważne
-            $display("Pomiar %0d:", i);
-            $display("  Length        = %0d", sim_length);
-            $display("  Fake Carry    = 0x%08x", fake_carry);
-            $display("  Carry [bin]   = %032b", fake_carry);
-            $display("  Delay Cycles  = %0d", delay_cycles_out);
-            $display("");
-        end
-
-        #1000;
-        $display("=== KONIEC SYMULACJI ===");
-        $finish;
+        $stop;
     end
 
 endmodule
