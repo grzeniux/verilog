@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item value="false" key="microblaze_design_wrapper_hw_platform_0-partial_bit"/>
+	<item value="bootloop" key="microblaze_design_wrapper_hw_platform_0-microblaze_0-initElf"/>
+	<item value="false" key="uart_wrapper_hw_platform_0-partial_bit"/>
+	<item value="microblaze_design_wrapper.mmi" key="microblaze_design_wrapper_hw_platform_0-bmmFile"/>
+	<item value="Auto Detect" key="uart_wrapper_hw_platform_0-device"/>
+	<item value="uart_wrapper.bit" key="uart_wrapper_hw_platform_0-bitFile"/>
+	<item value="uart_wrapper_hw_platform_0" key="programfpga.hwplatform"/>
+	<item value="microblaze_design_wrapper.bit" key="microblaze_design_wrapper_hw_platform_0-bitFile"/>
+	<item value="Local" key="uart_wrapper_hw_platform_0-target"/>
+	<item value="Local" key="microblaze_design_wrapper_hw_platform_0-target"/>
+	<item value="Auto Detect" key="microblaze_design_wrapper_hw_platform_0-device"/>
+	<item value="" key="uart_wrapper_hw_platform_0-bmmFile"/>
+</section>

@@ -50,13 +50,13 @@ set_property IOSTANDARD LVCMOS33 [get_ports {lvds_in_p lvds_in_n}]
 #set_property IOSTANDARD LVCMOS33 [get_ports {lvds_in_p lvds_in_n}]
 
 
-# UART TX
-set_property PACKAGE_PIN Y11 [get_ports uart_tx];
-set_property IOSTANDARD LVCMOS33 [get_ports uart_tx]
+## UART TX
+#set_property PACKAGE_PIN Y11 [get_ports uart_tx];
+#set_property IOSTANDARD LVCMOS33 [get_ports uart_tx]
 
-# UART RX 
-set_property PACKAGE_PIN AA11 [get_ports uart_rx];
-set_property IOSTANDARD LVCMOS33 [get_ports uart_rx]
+## UART RX 
+#set_property PACKAGE_PIN AA11 [get_ports uart_rx];
+#set_property IOSTANDARD LVCMOS33 [get_ports uart_rx]
 
 ##########################
 
@@ -83,3 +83,15 @@ set_property IOSTANDARD LVCMOS33 [get_ports led_test]
 # Wyj�cie 1 MHz na pin JA4 (Y11)
 set_property PACKAGE_PIN AA9 [get_ports clk_test]
 set_property IOSTANDARD LVCMOS33 [get_ports clk_test]
+
+
+######## MICROBLAZE
+
+set_property PACKAGE_PIN Y11 [get_ports uart_rtl_rxd]
+set_property IOSTANDARD LVCMOS33 [get_ports uart_rtl_rxd]
+
+set_property PACKAGE_PIN AA11 [get_ports uart_rtl_txd]
+set_property IOSTANDARD LVCMOS33 [get_ports uart_rtl_txd]
+
+
+
