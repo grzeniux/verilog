@@ -21,9 +21,6 @@ always @(posedge clk) begin
 end
 
 
-
-
-
 assign clk_test = clk_10hz;
 
     reg [7:0] uart_data = 0;
@@ -41,7 +38,8 @@ assign clk_test = clk_10hz;
   
     wire lvds = lvds_in_p & ~lvds_in_n;
     reg prev_lvds = 0;
-    wire trigger = (~prev_lvds & lvds);
+    wire start_trigger = (~prev_lvds & lvds);
+    wire stop_trigger = lvds_in_p^lvds_in_n;
 
     always @(posedge clk) begin
         prev_lvds <= lvds;
@@ -50,7 +48,7 @@ assign clk_test = clk_10hz;
   
     reg [23:0] led_timer = 0;
     always @(posedge clk) begin
-        if (trigger) begin
+        if (stop_trigger) begin
             led <= 1;
             led_timer <= 24'd5_000_000; // ok. 50 ms
         end else if (led_timer > 0) begin
@@ -61,11 +59,12 @@ assign clk_test = clk_10hz;
 
   
     wire [7:0] delay;
-    carry_chain_sampler carry_inst (
-        .clk(clk),
-        .trigger(trigger),
-        .delay_cycles(delay)
-    );
+carry_chain_sampler carry_inst (
+    .clk(clk),
+    .start_trigger(start_trigger),
+    .stop_trigger(stop_trigger),
+    .delay_cycles(delay)
+);
 
     // HEX konwersja
     function [7:0] nibble_to_ascii;
@@ -85,7 +84,7 @@ assign clk_test = clk_10hz;
         uart_start <= 0;
 
         case (state)
-            0: if (trigger) begin
+            0: if (stop_trigger) begin
                 temp <= delay;
                 state <= 1;
             end

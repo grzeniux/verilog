@@ -1,12 +1,15 @@
 module carry_chain_sampler (
     input wire clk,
-    input wire trigger,
+    input wire start_trigger,
+    input wire stop_trigger,
     output reg [7:0] delay_cycles
 );
 
     wire [31:0] carry_out;
-    wire carry_init = 1'b1;
+    reg [31:0] carry_latch;
+    reg enabled = 0;
 
+    wire carry_init = enabled;
   
     genvar i;
     generate
@@ -21,6 +24,20 @@ module carry_chain_sampler (
             );
         end
     endgenerate
+    
+        always @(posedge clk) begin
+        // start
+        if (start_trigger) begin
+            enabled <= 1;
+        end
+
+        // stop + pomiar
+        else if (stop_trigger && enabled) begin
+            carry_latch <= carry_out;
+            delay_cycles <= count_ones(carry_out);
+            enabled <= 0;
+        end
+    end
 
     function [7:0] count_ones;
         input [31:0] vector;
@@ -31,10 +48,13 @@ module carry_chain_sampler (
                 if (vector[j]) count_ones = count_ones + 1;
         end
     endfunction
-
-    always @(posedge clk) begin
-        if (trigger)
-            delay_cycles <= count_ones(carry_out);
-    end
+    
+//    always @(posedge stop_trigger) begin
+//        if (enabled) begin
+//            carry_latch <= carry_out;
+//            delay_cycles <= count_ones(carry_out);
+////            enabled <= 0;
+//        end
+//    end
 
 endmodule

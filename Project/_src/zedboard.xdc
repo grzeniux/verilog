@@ -59,7 +59,7 @@ set_property PACKAGE_PIN AA11 [get_ports uart_rx];
 set_property IOSTANDARD LVCMOS33 [get_ports uart_rx]
 
 ##########################
-<<<<<<< HEAD
+
 
 
 # Przycisk BTND → trigger
@@ -75,7 +75,7 @@ set_property PACKAGE_PIN U21 [get_ports led]
 set_property IOSTANDARD LVCMOS33 [get_ports led]
 
 # LD4 → test LED
-=======
+
 
 set_property PACKAGE_PIN V5 [get_ports lvds_trigger]         ;# JD2_P
 set_property IOSTANDARD LVCMOS33 [get_ports lvds_trigger]
@@ -94,7 +94,7 @@ set_property PACKAGE_PIN U21 [get_ports led]
 set_property IOSTANDARD LVCMOS33 [get_ports led]
 
 # LD4 ? test LED
->>>>>>> 6614e438109a67fead3f23bbf1bcb60422f01906
+
 set_property PACKAGE_PIN V22 [get_ports led_test]
 set_property IOSTANDARD LVCMOS33 [get_ports led_test]
 
